@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-01-01 12:24:17
- * @LastEditTime: 2021-01-01 23:01:30
+ * @LastEditTime: 2021-01-01 23:17:02
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \table\src\components\hooks.js
@@ -33,12 +33,12 @@ export const useExpandable = (dataSource, expandable) => {
   }, [dataSource, setExpandedRowKeys, setExpandableData]);
 
   const add = useCallback((key, index) => {
-    expandedSet.current.add(key);
-    setExpandedRowKeys(Array.from(expandedSet.current));
     const node = expandableMap.current.get(key);
     const children = node.children;
     const self = node.self;
     self.isExpand = true;
+    expandedSet.current.add(key);
+    setExpandedRowKeys(Array.from(expandedSet.current));
 
     setExpandableData((prevData) => {
 
@@ -53,14 +53,14 @@ export const useExpandable = (dataSource, expandable) => {
   }, [setExpandedRowKeys, setExpandableData]);
 
   const remove = useCallback((key, index) => {
-    expandedSet.current.delete(key);
-    setExpandedRowKeys(Array.from(expandedSet.current));
 
     const node = expandableMap.current.get(key);
     const children = node.children;
     const self = node.self;
     const length = collapseChlidren(children, expandedSet.current, expandableMap.current);
     self.isExpand = false;
+    expandedSet.current.delete(key);
+    setExpandedRowKeys(Array.from(expandedSet.current));
 
     setExpandableData((prevData) => {
       const data = [
