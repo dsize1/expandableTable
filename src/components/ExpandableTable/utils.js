@@ -1,11 +1,3 @@
-/*
- * @Author: your name
- * @Date: 2021-01-01 12:33:15
- * @LastEditTime: 2021-01-01 23:03:10
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
- * @FilePath: \table\src\components\ExpandableTable\utils.js
- */
 import _get from 'lodash/get';
 import _omit from 'lodash/omit';
 import _isNil from 'lodash/isNil';
@@ -44,19 +36,14 @@ const traverseReducer = (result, item, index) => {
   if (result.expandAll || result.defaultKeys.has(expandKey)) {
     result.set.add(expandKey);
     self.isExpand = true;
-    result.data.push(self);
-    childrenNode.forEach((child) => {
-      result.data.push(child);
-    })
-  } else {
-    result.data.push(self);
   }
+  result.data.push(self);
   result.map.set(expandKey, mapNode);
 
   return result;
 };
 
-export const getInitialData = (dataSource, expandable) => {
+export const getInitialExpandableData = (dataSource, expandable) => {
   const expandAll = _get(expandable, 'defaultExpandAllRows', false);
   let defaultKeys = new Set(_get(expandable, 'defaultExpandedRowKeys', []));
 
@@ -75,7 +62,6 @@ export const getInitialData = (dataSource, expandable) => {
 };
 
 const traverseChildren = (result, self) => {
-  result.counter += 1;
   const key = self.expandKey;
   const isExpand = self.isExpand;
   const expandable = self.expandable;
@@ -84,22 +70,63 @@ const traverseChildren = (result, self) => {
     const mapNode = result.map.get(key);
     const children = mapNode.children;
 
-    const { counter } = children.reduce(
+    children.reduce(
       traverseChildren,
-      { ...result, counter: 0 }
+      result
     );
     self.isExpand = false;
     result.set.delete(key);
-    result.counter += counter;
   }
 
   return result;
 };
 
 export const collapseChlidren = (children, set, map) => {
-  const { counter } = children.reduce(
+  children.reduce(
     traverseChildren,
-    { counter: 0, set, map }
+    { set, map }
   );
-  return counter;
+};
+
+const getFinalDataReducer = (result, self) => {
+  const key = self.expandKey;
+  const isExpand = self.isExpand;
+  result.finalData.push(self);
+  if (isExpand) {
+    const map = _get(result, 'conditions.map');
+    const mapNode = map && map.get(key); 
+    const childrenNode = _get(mapNode, 'children', []);
+    childrenNode.reduce(
+      getFinalDataReducer,
+      result
+    );
+  }
+  return result;
+};
+
+export const getFinalData = (data, conditions) => {
+  // todo 过滤和排序
+  const { finalData } = data.reduce(
+    getFinalDataReducer,
+    { conditions, finalData: [] }
+  );
+  return finalData;
+};
+
+export const getPagedData = (data, start, size) => {
+  const { paged } = data.reduce((result, item) => {
+    const key = item.expandKey;
+    const isCurrPaged = result.count < size && result.index >= start;
+    if (!key.includes('-')) {
+      if (isCurrPaged) {
+        result.paged.push(item);
+        result.count += 1;
+      }
+      result.index += 1;
+    } else if (isCurrPaged) {
+      result.paged.push(item);
+    }
+    return result;
+  }, { paged: [], count: 0, index: 0 });
+  return paged;
 };

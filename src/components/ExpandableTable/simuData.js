@@ -57,6 +57,18 @@ const getData = () => {
           ...item,
           children: []
         };
+      }),
+      ...data.map(item => {
+        return {
+          ...item,
+          children: []
+        };
+      }),
+      ...data.map(item => {
+        return {
+          ...item,
+          children: data.map(item => ({ ...item, children: data.slice(0, 3).map(item => ({ ...item, children: data.slice(0, 2).map(item => ({ ...item, children: [] })) })) }))
+        };
       })
     ]
   }

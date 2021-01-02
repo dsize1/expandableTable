@@ -1,94 +1,62 @@
-import React, { useMemo, useCallback } from 'react';
-import classNames from 'classnames';
-import _throttle from 'lodash/throttle';
-import { Table } from 'antd';
-import { useExpandable } from './hooks';
+import React, { Fragment, useMemo } from 'react';
+import { Table, Pagination } from 'antd';
+import _get from 'lodash/get';
+import useExpandable from './hooks/useExpandable';
+import usePagination from './hooks/usePagination';
+import { getFinalData, getPagedData } from './utils';
 import getData from './simuData';
 
-const ExpandableTable = () => {
-
+const ExpandableTable = (props) => {
+  const paginationProps = _get(props, 'pagination', {});
   const { dataSource, columns } = useMemo(() => {
     return getData();
-  }, [])
+  }, []);
 
   const {
     expandableData,
-    expandable: { onExpand, expandedRowKeys }
+    expandableColumns,
+    expandedRowKeys,
+    onExpand,
+    expandedSet,
+    expandableMap,
+    expandable
   } = useExpandable(dataSource, columns);
 
-  const onExpandClick = useCallback(
-    _throttle(
-      (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const classList = Array.from(event.target.classList);
-        const { key, index, expand } = classList.reduce((result, cls) => {
-          if (
-            result.key === undefined &&
-            cls.includes('table-expand-key')
-          ) {
-            result.key = cls.slice(17);
-          }
+  const paginationOption = usePagination(paginationProps);
 
-          if (
-            result.index === -1 &&
-            cls.includes('table-expand-index')
-          ) {
-            result.index = Number(cls.slice(19));
-          }
-        
-          result.expand = result.isExpand || cls === 'table-expand-close';
-
-          return result;
-        }, { key: undefined, index: -1, expand: false });
-        if (key === undefined || index === -1) return;
-        onExpand(expand, key, index);
-      },
-      500,
-      { 'trailing': false }
-    ),
-    [onExpand]
+  const finalData = useMemo(
+    () => {
+      const finalData = getFinalData(
+        expandableData,
+        { map: expandableMap }
+      );
+      return finalData;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      expandableData,
+      expandedRowKeys
+    ]
   );
 
-  const expandableColumns = useMemo(() => {
-    const firstColumn = columns[0];
-    const rawRender = firstColumn.render;
-    const render = (text, record, index) => {
-      const expandable = record.expandable;
-      const expandKey = record.expandKey;
-      const isExpand = record.isExpand;
-      const level = expandKey.split('-').length;
-      const marginLeft = (level - 1) * 12;
-      const className = classNames([
-        `table-expandable`,
-        `table-expand-key-${expandKey}`,
-        `table-expand-index-${index}`,
-        `table-expand-${isExpand ? 'open' : 'close'}`
-      ]);
-      return (
-        <div style={{ display: 'inline-flex', flexDirection: 'row' }} >
-          {
-            expandable ?
-              (
-                <span
-                  onClick={onExpandClick}
-                  className={className}
-                  style={{ cursor: 'pointer', width: 12, marginRight: 8, marginLeft }}
-                >
-                  { isExpand ? '关' : '开' }
-                </span>
-              ) :
-              (<span style={{ width: 12, marginRight: 8, marginLeft }} />)
-          }
-          <span>{ rawRender ? rawRender(text, record, index) : text}</span>
-        </div>
-      );
-    };
-    return [{ ...firstColumn, render }, ...columns.slice(1)];
-  }, [columns, onExpandClick]);
+  const pagedData = useMemo(() => {
+    const start = (paginationOption.current - 1) * paginationOption.pageSize;
+    const paged = getPagedData(finalData, start, paginationOption.pageSize);
+    return paged;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalData, paginationOption.current, paginationOption.pageSize])
 
   return (
-    <Table columns={expandableColumns} dataSource={expandableData} rowKey="expandKey" pagination={false} />
+    <Fragment>
+      <Table
+        columns={expandableColumns}
+        dataSource={pagedData}
+        rowKey="expandKey"
+        pagination={false}
+        expandable={expandable}
+      />
+      <Pagination {...paginationOption} total={expandableData.length} />
+    </Fragment>
   );
 };
 
