@@ -1,16 +1,23 @@
-import React, { Fragment, useMemo } from 'react';
+import React, { Fragment, useMemo, useCallback } from 'react';
 import { Table, Pagination } from 'antd';
 import _get from 'lodash/get';
+import _omit from 'lodash/omit';
+import _isArray from 'lodash/isArray';
+import _isFunction from 'lodash/isFunction';
 import useExpandable from './hooks/useExpandable';
 import usePagination from './hooks/usePagination';
+import useSortable from './hooks/useSortable';
 import { getFinalData, getPagedData } from './utils';
-import getData from './simuData';
+
+const omitKeys = ['pagination', 'expandable', 'onTableChange', 'rowKey', 'dataSource', 'columns', 'multipleSort'];
 
 const ExpandableTable = (props) => {
-  const paginationProps = _get(props, 'pagination', {});
-  const { dataSource, columns } = useMemo(() => {
-    return getData();
-  }, []);
+  const tableProps = _omit(props, omitKeys);
+  const paginationProp = _get(props, 'pagination', {});
+  const dataSourceProp = _get(props, 'dataSource', []);
+  const columnsProp = _get(props, 'columns', []);
+  const onChangeProp = _get(props, 'onChange');
+  const multipleSort = _get(props, 'multipleSort', false);
 
   const {
     expandableData,
@@ -20,22 +27,23 @@ const ExpandableTable = (props) => {
     expandedSet,
     expandableMap,
     expandable
-  } = useExpandable(dataSource, columns);
-
-  const paginationOption = usePagination(paginationProps);
+  } = useExpandable(dataSourceProp, columnsProp);
+  const { sortableColumns, sorters, onSort } = useSortable(expandableColumns, multipleSort);
+  const paginationOption = usePagination(paginationProp);
 
   const finalData = useMemo(
     () => {
       const finalData = getFinalData(
         expandableData,
-        { map: expandableMap }
+        { map: expandableMap, sorters }
       );
       return finalData;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       expandableData,
-      expandedRowKeys
+      expandedRowKeys,
+      sorters
     ]
   );
 
@@ -46,14 +54,27 @@ const ExpandableTable = (props) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finalData, paginationOption.current, paginationOption.pageSize])
 
+  const onTableChange = useCallback((_pagination, filters, sorter, extra) => {
+    if (_isFunction(onChangeProp)) onChangeProp(_pagination, filters, sorter, extra);
+    if (extra.action === 'sort') {
+      if (_isArray(sorter)) {
+        onSort(sorter);
+      } else {
+        onSort([sorter]);
+      }
+    } 
+  }, [onSort, onChangeProp]);
+
   return (
     <Fragment>
       <Table
-        columns={expandableColumns}
+        {...tableProps}
+        columns={sortableColumns}
         dataSource={pagedData}
         rowKey="expandKey"
         pagination={false}
         expandable={expandable}
+        onChange={onTableChange}
       />
       <Pagination {...paginationOption} total={expandableData.length} />
     </Fragment>

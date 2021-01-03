@@ -2,6 +2,7 @@ import _get from 'lodash/get';
 import _omit from 'lodash/omit';
 import _isNil from 'lodash/isNil';
 
+
 export const clearRef = (ref) => {
   if (ref.current) {
     ref.current.clear();
@@ -88,6 +89,20 @@ export const collapseChlidren = (children, set, map) => {
   );
 };
 
+const getSortedData = (data, sorters) => {
+  const sorted = sorters.reduce((result, sorter) => {
+    if (!sorter.order) return result;
+    return Array.from(result).sort((a, b) => {
+      const sortDirections = sorter.order === 'ascend';
+      if (sortDirections) {
+        return sorter.func(a, b);
+      }
+      return sorter.func(b, a);
+    });
+  }, data);
+  return sorted;
+};
+
 const getFinalDataReducer = (result, self) => {
   const key = self.expandKey;
   const isExpand = self.isExpand;
@@ -95,8 +110,11 @@ const getFinalDataReducer = (result, self) => {
   if (isExpand) {
     const map = _get(result, 'conditions.map');
     const mapNode = map && map.get(key); 
-    const childrenNode = _get(mapNode, 'children', []);
-    childrenNode.reduce(
+    const sortedChildrenNode = getSortedData(
+      _get(mapNode, 'children', []),
+      _get(result, 'conditions.sorters')
+    );
+    sortedChildrenNode.reduce(
       getFinalDataReducer,
       result
     );
@@ -106,7 +124,8 @@ const getFinalDataReducer = (result, self) => {
 
 export const getFinalData = (data, conditions) => {
   // todo 过滤和排序
-  const { finalData } = data.reduce(
+  const sorted = getSortedData(data, conditions.sorters);
+  const { finalData } = sorted.reduce(
     getFinalDataReducer,
     { conditions, finalData: [] }
   );
@@ -130,3 +149,5 @@ export const getPagedData = (data, start, size) => {
   }, { paged: [], count: 0, index: 0 });
   return paged;
 };
+
+export const defaultSorterFunc = (dataIndex) => (a, b) => a[dataIndex] - b[dataIndex];
