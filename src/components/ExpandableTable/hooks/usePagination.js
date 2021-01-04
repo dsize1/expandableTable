@@ -6,29 +6,31 @@ const defaultPageSizeOptions = [10, 20, 50];
 
 const usePagination = (option) => {
   const defaultCurrent = _get(option, 'defaultCurrent', 1);
-  const defaultPageSize = _get(option, 'defaultPageSize', 10);
+  const defaultPageSize = _get(option, 'defaultPageSize', 50);
   const pageSizeOptions = _get(option, 'pageSizeOptions', defaultPageSizeOptions);
   const [current, setCurrent] = useState(defaultCurrent);
   const [pageSize, setPageSize] = useState(defaultPageSize);
 
-  const onChange = useCallback((nextPage, PageSize) => {
+  const onPageChange = useCallback((nextPage, pageSize) => {
     setCurrent(nextPage);
   }, [setCurrent]);
 
-  const onShowSizeChange = useCallback((current, size) => {
+  const onPageSizeChange = useCallback((current, size) => {
     setCurrent(1);
     setPageSize(size);
   }, [setCurrent, setPageSize]);
 
   return {
-    ..._omit(option, ['total']),
-    defaultCurrent,
-    defaultPageSize,
-    pageSizeOptions,
-    current,
-    pageSize,
-    onChange,
-    onShowSizeChange
+    paginationOption: {
+      ..._omit(option, ['total']),
+      defaultCurrent,
+      defaultPageSize,
+      pageSizeOptions,
+      current,
+      pageSize
+    },
+    onPageChange,
+    onPageSizeChange
   };
 };
 

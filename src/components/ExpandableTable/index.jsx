@@ -28,8 +28,16 @@ const ExpandableTable = (props) => {
     expandableMap,
     expandable
   } = useExpandable(dataSourceProp, columnsProp);
-  const { sortableColumns, sorters, onSort } = useSortable(expandableColumns, multipleSort);
-  const paginationOption = usePagination(paginationProp);
+  const {
+    sortableColumns,
+    sorters,
+    onSort
+  } = useSortable(expandableColumns, multipleSort);
+  const {
+    paginationOption,
+    onPageChange,
+    onPageSizeChange
+  } = usePagination(paginationProp);
 
   const finalData = useMemo(
     () => {
@@ -55,7 +63,7 @@ const ExpandableTable = (props) => {
   }, [finalData, paginationOption.current, paginationOption.pageSize])
 
   const onTableChange = useCallback((_pagination, filters, sorter, extra) => {
-    if (_isFunction(onChangeProp)) onChangeProp(_pagination, filters, sorter, extra);
+    if (_isFunction(onChangeProp)) onChangeProp(paginationOption, filters, sorter, extra);
     if (extra.action === 'sort') {
       if (_isArray(sorter)) {
         onSort(sorter);
@@ -63,7 +71,31 @@ const ExpandableTable = (props) => {
         onSort([sorter]);
       }
     } 
-  }, [onSort, onChangeProp]);
+  }, [onSort, onChangeProp, paginationOption]);
+
+  const onPaginationChange = useCallback((nextPage, pageSize) => {
+    if (_isFunction(onChangeProp)) {
+      onChangeProp(
+        { nextPage, pageSize },
+        null,
+        sorters,
+        { action: 'pagination' }
+      );
+    }
+    onPageChange(nextPage, pageSize);
+  }, [onPageChange, sorters, onChangeProp]);
+
+  const onPaginationShowSizeChange = useCallback((current, size) => {
+    if (_isFunction(onChangeProp)) {
+      onChangeProp(
+        { current, size },
+        null,
+        sorters,
+        { action: 'pagination' }
+      );
+    }
+    onPageSizeChange(current, size);
+  }, [onPageSizeChange, sorters, onChangeProp]);
 
   return (
     <Fragment>
@@ -76,7 +108,12 @@ const ExpandableTable = (props) => {
         expandable={expandable}
         onChange={onTableChange}
       />
-      <Pagination {...paginationOption} total={expandableData.length} />
+      <Pagination
+        {...paginationOption}
+        total={expandableData.length}
+        onChange={onPaginationChange}
+        onShowSizeChange={onPaginationShowSizeChange}
+      />
     </Fragment>
   );
 };
